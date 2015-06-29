@@ -7,19 +7,22 @@ import socket
 import base64
 
 httpserver='192.168.42.250'
-httpurl="/upload.aspx?hostname="+socket.gethostname()
+httpurl="/upload.aspx?"
+picturePeriod=60
 
 headers={"Content-type": "application/x-www-form-urlencoded", "Accept":"text/plain"}
 params=urllib.urlencode({'client': socket.gethostname()})
 
+# list we throw failed upload into
 failedUploads=[]
 
-def uploadPicture(uuencoded):
+def uploadPicture(uuencoded, timetaken=None):
 	headers["Content-Length"] = len(uuencoded)
 	conn=httplib.HTTPConnection(httpserver)
-	print 'con',
-	conn.request("POST", httpurl, uuencoded ,headers)
-	print 'req',
+	params={'hostname':socket.gethostname()}
+	if timetaken is not None:
+		params['timeTaken']=str(timetaken)
+	conn.request("POST", httpurl+urllib.urlencode(params), uuencoded ,headers)
 	response=conn.getresponse()
 	print response.status, response.reason,
 	data=response.read()
@@ -31,7 +34,7 @@ def takePicture(camera):
 		camera.led=True
 		camera.capture(jpgStream,'jpeg')
 		iolen=jpgStream.tell()
-		print 'cap ',iolen,
+		print 'jpg',iolen,'bytes',
 		jpgStream.seek(0)
 		uuencoded=base64.b64encode(jpgStream.getvalue())
 	except:
@@ -42,7 +45,9 @@ def takePicture(camera):
 		# then try to upload anything that failed previously
 		try:
 			while (len(failedUploads)):
-				uploadPicture(failedUploads.pop(0)['stream'])
+				retryCandidate=failedUploads[0]
+				uploadPicture(retryCandidate['stream'],retryCandidate['timeTaken'])
+				failedUploads.pop()
 				print "reuploaded"
 		except:
 			print "Unexpected error:", sys.exc_info()[0]
@@ -67,5 +72,5 @@ with picamera.PiCamera() as camera:
 		takePicture(camera)
 		print 'completed ',count+1
 		count=count+1
-		time.sleep(60)
+		time.sleep(picturePeriod)
 
