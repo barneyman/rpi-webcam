@@ -30,7 +30,7 @@ public partial class upload : System.Web.UI.Page
                 if (Request.Params["hostname"] != null)
                     hostname = Request.Params["hostname"];
 
-                insertCmd.Parameters.Add("@hostname", hostname);
+                insertCmd.Parameters.AddWithValue("@hostname", hostname);
 
                 byte[] buffer = new byte[Request.InputStream.Length];
                 Request.InputStream.Read(buffer, 0, buffer.Length);
@@ -38,7 +38,13 @@ public partial class upload : System.Web.UI.Page
                 string b64 = System.Text.Encoding.Default.GetString(buffer);
 
                 byte[] image = Convert.FromBase64String(b64);
-                insertCmd.Parameters.Add("@pic", image);
+                insertCmd.Parameters.AddWithValue("@pic", image);
+
+                if(Request.Params["timeTaken"]!=null)
+                {
+                    System.DateTime takenAt=System.Convert.ToDateTime(Request.Params["timeTaken"]);
+                    insertCmd.Parameters.AddWithValue("@timeCaptured", takenAt);
+                }
 
                 insertCmd.ExecuteNonQuery();
 
